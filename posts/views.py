@@ -4,6 +4,9 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import User, Post, Comment
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
+from django.contrib.auth.models import User
+from rest_framework import status
+from django.contrib.auth import authenticate
 
 # ✅ User API
 class UserListCreate(APIView):
@@ -13,11 +16,19 @@ class UserListCreate(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        username = request.data.get("username")
+        password = request.data.get("password")
+        email = request.data.get("email")  # ✅ Get email from request
+
+        if not username or not password:
+            return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Create user with hashed password
+        user = User.objects.create_user(username=username, password=password, email=email)
+
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 # ✅ Post API
 class PostListCreate(APIView):
@@ -46,3 +57,23 @@ class CommentListCreate(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ✅ User Login API
+class UserLogin(APIView):
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        if not username or not password:
+            return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = authenticate(username=username, password=password)
+
+        if user is not None:
+            return Response({"message": "Authentication successful!"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+
+
+        
