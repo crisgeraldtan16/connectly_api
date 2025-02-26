@@ -7,4 +7,4 @@ class IsPostAuthor(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         # Check if the author of the post is the current user
-        return obj.author == request
+        return obj.author == request.user
