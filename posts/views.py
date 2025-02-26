@@ -9,6 +9,7 @@ from django.contrib.auth.models import User, Group  # Import Group
 from .permissions import IsPostAuthor  # Import the custom permission
 from rest_framework.permissions import IsAuthenticated  # Import IsAuthenticated permission
 from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
 
 
 # ✅ User API
@@ -48,7 +49,7 @@ class UserListCreate(APIView):
 
 # ✅ Post API
 class PostListCreate(APIView):
-    permission_classes = []  # Ensure only authenticated users can create posts
+    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can create posts
 
     def get(self, request):
         posts = Post.objects.all()
