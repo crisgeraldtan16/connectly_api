@@ -1,30 +1,47 @@
 from rest_framework import serializers
-from .models import User, Post, Comment
+from .models import Dislike, User, Post, Comment, Like
 
-class UserSerializer(serializers.ModelSerializer):
+# ✅ Like serializer
+class LikeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['id', 'username', 'email']
+        model = Like
+        fields = ['id', 'user', 'post', 'created_at']
 
-class PostSerializer(serializers.ModelSerializer):
-    author = serializers.ReadOnlyField(source='author.username')  # ✅ Prevents direct assignment
-    comments = serializers.StringRelatedField(many=True, read_only=True)  # ✅ Shows related comments
-
-    class Meta:
-        model = Post
-        fields = ['id', 'content', 'author', 'created_at', 'comments']
-
+# ✅ Comment serializer
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.ReadOnlyField(source='author.username')  # ✅ Prevents direct assignment
-    post = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())  # ✅ Ensures post exists
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())  # Allow user as ID
+    post = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())  # Allow post as ID
 
     class Meta:
         model = Comment
-        fields = ['id', 'text', 'author', 'post', 'created_at']
+        fields = ['id', 'user', 'post', 'text', 'created_at']
 
-    def validate_post(self, value):
-        """ Ensure the referenced post exists """
-        if not Post.objects.filter(id=value.id).exists():
-            raise serializers.ValidationError("Post not found.")
-        return value
+# ✅ User serializer
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'date_joined']  # Change 'created_at' to 'date_joined'
 
+# ✅ Dislike serializer
+class DislikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dislike
+        fields = ['id', 'user', 'post', 'created_at']
+
+# ✅ Serializer for the Post model, including comments and likes
+class PostSerializer(serializers.ModelSerializer):
+    comments = CommentSerializer(many=True, read_only=True)
+    likes = LikeSerializer(many=True, read_only=True)
+    dislikes = DislikeSerializer(many=True, read_only=True)  # Include dislikes
+    like_count = serializers.SerializerMethodField()
+    dislike_count = serializers.SerializerMethodField()  # Add dislike count
+
+    class Meta:
+        model = Post
+        fields = ['id', 'content', 'author', 'created_at', 'comments', 'likes', 'dislikes', 'like_count', 'dislike_count']
+
+    def get_like_count(self, obj):
+        return obj.likes.count()
+
+    def get_dislike_count(self, obj):
+        return obj.dislikes.count()  # Count dislikes
