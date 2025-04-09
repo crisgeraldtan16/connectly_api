@@ -32,16 +32,27 @@ class DislikeSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     comments = CommentSerializer(many=True, read_only=True)
     likes = LikeSerializer(many=True, read_only=True)
-    dislikes = DislikeSerializer(many=True, read_only=True)  # Include dislikes
+    dislikes = DislikeSerializer(many=True, read_only=True)
     like_count = serializers.SerializerMethodField()
-    dislike_count = serializers.SerializerMethodField()  # Add dislike count
+    dislike_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
-        fields = ['id', 'content', 'author', 'created_at', 'comments', 'likes', 'dislikes', 'like_count', 'dislike_count']
+        fields = ['id', 'content', 'author', 'created_at', 'privacy', 'comments', 'likes', 'dislikes', 'like_count', 'dislike_count']
 
     def get_like_count(self, obj):
         return obj.likes.count()
 
     def get_dislike_count(self, obj):
-        return obj.dislikes.count()  # Count dislikes
+        return obj.dislikes.count()
+
+    def to_representation(self, instance):
+        # Get the current logged-in user from the context
+        user = self.context.get('request').user
+
+        # If it's a private post and the current user is not the author, return an empty dict
+        if instance.privacy == 'private' and instance.author != user:
+            return {}
+
+        # Otherwise, serialize the instance normally
+        return super().to_representation(instance)
