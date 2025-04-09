@@ -143,3 +143,61 @@ class DislikeViewSet(viewsets.ModelViewSet):
             return Response({"detail": "You have already disliked this post."}, status=status.HTTP_400_BAD_REQUEST)
 
         return super().create(request, *args, **kwargs)
+
+# ✅ Post Delete API
+class PostDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]  # Admin check for delete action
+    authentication_classes = [TokenAuthentication]
+
+    def delete(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+
+        # Enforce privacy setting if needed
+        if post.privacy == 'private' and post.author != request.user:
+            return Response({"detail": "You do not have permission to delete this private post."}, status=status.HTTP_403_FORBIDDEN)
+
+        post.delete()
+        return Response({"detail": "Post deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+# ✅ Comment Delete API
+class CommentDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]  # Admin check for delete action
+    authentication_classes = [TokenAuthentication]
+
+    def delete(self, request, pk):
+        comment = get_object_or_404(Comment, pk=pk)
+        comment.delete()
+        return Response({"detail": "Comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+# ✅ User Posts API
+def user_posts(request):
+    # Ensure you're passing the current logged-in user
+    visible_posts = Post.get_visible_posts(user=request.user)
+    return render(request, 'your_template.html', {'posts': visible_posts})
+
+# ✅ Feed API
+class FeedPagination(PageNumberPagination):
+    page_size = 5  # default posts per page
+    page_size_query_param = 'page_size'
+    max_page_size = 20
+
+# ✅ Feed API (Class-Based View)
+class FeedView(ListAPIView):
+    queryset = Post.objects.all().order_by('-created_at')  # sort newest first
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+    pagination_class = FeedPagination
+
+    def get_queryset(self):
+        # Cache key includes user ID to prevent exposure of private posts across users
+        cache_key = f'user_feed_{self.request.user.id}'
+        cached_posts = cache.get(cache_key)
+
+        if cached_posts is None:
+            queryset = Post.get_visible_posts(user=self.request.user).order_by('-created_at')
+            cache.set(cache_key, queryset, timeout=60)  # cache for 1 minute
+            return queryset
+
+        return cached_posts
+
