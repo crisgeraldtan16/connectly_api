@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
-from .views import UserListCreate, PostListCreate, LikeViewSet, CommentViewSet, register, LikeCreateView, DislikeViewSet
+from .views import UserListCreate, PostListCreate, LikeViewSet, CommentViewSet, register, LikeCreateView, DislikeViewSet, PostDeleteView, CommentDeleteView, FeedView
 
 # ✅ Instantiate the router
 router = DefaultRouter()
@@ -28,7 +28,16 @@ urlpatterns = [
 
     # ✅ Create a like
     path('likes/create/', LikeCreateView.as_view(), name='like-create'),
-
+    
+    # ✅ Include the router for likes, comments, and dislikes
     path('', include(router.urls)),
 
+    # ✅ Post Delete
+    path('posts/<int:pk>/delete/', PostDeleteView.as_view(), name='post-delete'),
+
+    # ✅ Comment Delete
+    path('comments/<int:pk>/delete/', CommentDeleteView.as_view(), name='comment-delete'),
+
+    # ✅ Feed
+    path('feed/', FeedView.as_view(), name='feed'),
 ]
